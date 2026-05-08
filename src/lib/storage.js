@@ -4,7 +4,7 @@ import path from 'path';
 const DATA_DIR = path.join(process.cwd(), 'data');
 
 // Default admin credentials (used only on first boot if admin.json doesn't exist)
-const DEFAULT_ADMIN = { username: 'admin', password: 'admin123' };
+const DEFAULT_ADMIN = { id: 'admin', name: 'Administrator', password: 'admin123' };
 
 // Ensure data directory and required files exist
 const initStorage = () => {
@@ -25,6 +25,29 @@ const initStorage = () => {
       fs.writeFileSync(filePath, JSON.stringify(defaultValue, null, 2));
     }
   });
+
+  // Auto-seed students from data.json if students.json is empty
+  const studentsPath = path.join(DATA_DIR, 'students.json');
+  try {
+    const currentStudents = JSON.parse(fs.readFileSync(studentsPath, 'utf8'));
+    if (Array.isArray(currentStudents) && currentStudents.length === 0) {
+      const seedPath = path.join(process.cwd(), 'data.json');
+      if (fs.existsSync(seedPath)) {
+        const seedData = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
+        if (Array.isArray(seedData) && seedData.length > 0) {
+          const students = seedData.map(s => ({
+            id: s.cnic?.toString() || s.id?.toString(),
+            name: s.name || `Student ${s.cnic || s.id}`,
+            password: s.roll_no?.toString() || s.password?.toString() || '123456',
+            disabled: false
+          })).filter(s => s.id);
+          fs.writeFileSync(studentsPath, JSON.stringify(students, null, 2));
+        }
+      }
+    }
+  } catch (e) {
+    // Silently skip if seed fails
+  }
 };
 
 initStorage();
@@ -46,3 +69,4 @@ export const saveData = (filename, data) => {
   const filePath = path.join(DATA_DIR, `${filename}.json`);
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
 };
+
