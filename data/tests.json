@@ -1,1 +1,19 @@
-[]
+[
+  {
+    "testId": "Chemistry",
+    "title": "Chem Finals",
+    "duration": 5,
+    "questions": [
+      {
+        "question": "What is chemistry",
+        "options": [
+          "Mastri",
+          "Asteri",
+          "Jestry",
+          "Chemestry"
+        ],
+        "answer": "Chemestry"
+      }
+    ]
+  }
+]
