@@ -1,15 +1,11 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation'; // ✅ FIXED: Import added
 import { Upload, FileCode, CheckCircle2, AlertCircle, Trash2, Eye, Loader2, FileUp } from 'lucide-react';
 
-// ── KaTeX math renderer hook ─────────────────────────────────────────────────
-// Renders inline $...$ and block $$...$$ LaTeX in a DOM node
-// ── KaTeX math renderer hook ─────────────────────────────────────────────────
-// Renders inline $...$ and block $$...$$ LaTeX in a DOM node
 function useMathRenderer() {
   useEffect(() => {
-    if (typeof window === 'undefined') return; // ✅ Fixed: Check for server-side
+    if (typeof window === 'undefined') return; // ✅ FIXED: Correct server check
     
     if (window.__katexLoaded) { 
       renderMath(); 

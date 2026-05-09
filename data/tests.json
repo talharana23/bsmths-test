@@ -15,5 +15,32 @@
         "answer": "Chemestry"
       }
     ]
+  },
+  {
+    "testId": "CALC01",
+    "title": "Calculus Basics",
+    "duration": 30,
+    "questions": [
+      {
+        "question": "What is $\\frac{d}{dx}(x^2)$?",
+        "options": [
+          "$x$",
+          "$2x$",
+          "$x^2$",
+          "$2$"
+        ],
+        "answer": "$2x$"
+      },
+      {
+        "question": "Solve: $\\int_0^1 x\\,dx$",
+        "options": [
+          "0",
+          "1",
+          "0.5",
+          "2"
+        ],
+        "answer": "0.5"
+      }
+    ]
   }
 ]

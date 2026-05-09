@@ -83,17 +83,13 @@ export async function POST(request) {
     testData.testId   = String(testData.testId).trim();
     testData.title    = String(testData.title).trim();
 
-    const tests = getData('tests');
-    const index = tests.findIndex(t => t.testId === testData.testId);
-    if (index !== -1) {
-      // Update existing test
-      tests[index] = testData;
-    } else {
-      tests.push(testData);
-    }
-
-    saveData('tests', tests);
-    return NextResponse.json({ success: true, test: testData });
+ // Replace the final lines:
+  const tests = await getData('tests');
+  const index = tests.findIndex(t => t.testId === testData.testId);
+  if (index !== -1) tests[index] = testData;
+  else tests.push(testData);
+  await saveData('tests', tests);
+  return NextResponse.json({ success: true, test: testData });
 
   } catch (error) {
     console.error('Upload Test Error:', error);
