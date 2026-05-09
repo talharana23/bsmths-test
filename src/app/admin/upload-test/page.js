@@ -5,26 +5,53 @@ import { Upload, FileCode, CheckCircle2, AlertCircle, Trash2, Eye, Loader2, File
 
 // ── KaTeX math renderer hook ─────────────────────────────────────────────────
 // Renders inline $...$ and block $$...$$ LaTeX in a DOM node
+// ── KaTeX math renderer hook ─────────────────────────────────────────────────
+// Renders inline $...$ and block $$...$$ LaTeX in a DOM node
 function useMathRenderer() {
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (window.__katexLoaded) { renderMath(); return; }
+    if (typeof window === 'undefined') return; // ✅ Fixed: Check for server-side
+    
+    if (window.__katexLoaded) { 
+      renderMath(); 
+      return; 
+    }
 
-    const link = document.createElement('link');
-    link.rel  = 'stylesheet';
-    link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css';
-    document.head.appendChild(link);
+    const loadKaTeX = async () => {
+      try {
+        // Load CSS
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css';
+        document.head.appendChild(link);
 
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js';
-    script.onload = () => {
-      const autoRender = document.createElement('script');
-      autoRender.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js';
-      autoRender.onload = () => { window.__katexLoaded = true; renderMath(); };
-      document.head.appendChild(autoRender);
+        // Load KaTeX core
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js';
+        document.head.appendChild(script);
+
+        await new Promise((resolve) => {
+          script.onload = resolve;
+        });
+
+        // Load auto-render extension
+        const autoRender = document.createElement('script');
+        autoRender.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js';
+        document.head.appendChild(autoRender);
+
+        await new Promise((resolve) => {
+          autoRender.onload = () => { 
+            window.__katexLoaded = true; 
+            renderMath();
+            resolve(); 
+          };
+        });
+      } catch (error) {
+        console.warn('KaTeX failed to load:', error);
+      }
     };
-    document.head.appendChild(script);
-  });
+
+    loadKaTeX();
+  }, []);
 }
 
 function renderMath() {
