@@ -2,7 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 
-const IS_VERCEL = process.env.VERCEL === '1' || (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+const IS_VERCEL = !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
 
 const DEFAULT_ADMIN = { id: 'admin', name: 'Administrator', password: 'admin123' };
 
@@ -14,9 +14,9 @@ function initLocalStorage() {
 
   const defaults = {
     'students.json': [],
-    'tests.json': [],
-    'results.json': [],
-    'admin.json': DEFAULT_ADMIN,
+    'tests.json':    [],
+    'results.json':  [],
+    'admin.json':    DEFAULT_ADMIN,
   };
 
   for (const [file, def] of Object.entries(defaults)) {
@@ -34,8 +34,8 @@ function initLocalStorage() {
         const seed = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
         if (Array.isArray(seed) && seed.length > 0) {
           const students = seed.map(s => ({
-            id: s.roll_no?.toString() || s.id?.toString(),
-            name: s.name || `Student ${s.roll_no || s.id}`,
+            id:       s.roll_no?.toString() || s.id?.toString(),
+            name:     s.name || `Student ${s.roll_no || s.id}`,
             password: s.cnic?.toString() || s.password?.toString() || '123456',
             disabled: false,
           })).filter(s => s.id);
@@ -57,19 +57,31 @@ function localSet(key, data) {
   fs.writeFileSync(fp, JSON.stringify(data, null, 2));
 }
 
-// ── Vercel KV helpers (production) ──────────────────────────────────────────
-async function kvGet(key) {
-  const { kv } = await import('@vercel/kv');
-  return await kv.get(key);
+// ── Upstash Redis helpers (production) ──────────────────────────────────────
+let _redis = null;
+
+async function getRedis() {
+  if (_redis) return _redis;
+  const { Redis } = await import('@upstash/redis');
+  _redis = new Redis({
+    url:   process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+  });
+  return _redis;
 }
 
-async function kvSet(key, data) {
-  const { kv } = await import('@vercel/kv');
-  await kv.set(key, data);
+async function redisGet(key) {
+  const redis = await getRedis();
+  return await redis.get(key);
 }
 
-async function seedKVStudentsIfEmpty() {
-  const students = await kvGet('students');
+async function redisSet(key, data) {
+  const redis = await getRedis();
+  await redis.set(key, data);
+}
+
+async function seedRedisStudentsIfEmpty() {
+  const students = await redisGet('students');
   if (!students || students.length === 0) {
     try {
       const seedPath = path.join(process.cwd(), 'data.json');
@@ -77,42 +89,42 @@ async function seedKVStudentsIfEmpty() {
         const seed = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
         if (Array.isArray(seed) && seed.length > 0) {
           const mapped = seed.map(s => ({
-            id: s.roll_no?.toString() || s.id?.toString(),
-            name: s.name || `Student ${s.roll_no || s.id}`,
+            id:       s.roll_no?.toString() || s.id?.toString(),
+            name:     s.name || `Student ${s.roll_no || s.id}`,
             password: s.cnic?.toString() || s.password?.toString() || '123456',
             disabled: false,
           })).filter(s => s.id);
-          await kvSet('students', mapped);
+          await redisSet('students', mapped);
         }
       }
     } catch { /* skip */ }
   }
 }
 
-// ── Public API ───────────────────────────────────────────────────────────────
+// ── Init ─────────────────────────────────────────────────────────────────────
 if (!IS_VERCEL) initLocalStorage();
 
+// ── Public API ───────────────────────────────────────────────────────────────
 export async function getData(key) {
   if (!IS_VERCEL) {
     return localGet(key);
   }
 
-  // Vercel KV path
   if (key === 'admin') {
-    const admin = await kvGet('admin');
+    const admin = await redisGet('admin');
     if (!admin) {
-      await kvSet('admin', DEFAULT_ADMIN);
+      await redisSet('admin', DEFAULT_ADMIN);
       return DEFAULT_ADMIN;
     }
     return admin;
   }
 
   if (key === 'students') {
-    await seedKVStudentsIfEmpty();
-    return (await kvGet('students')) || [];
+    await seedRedisStudentsIfEmpty();
+    return (await redisGet('students')) || [];
   }
 
-  return (await kvGet(key)) || [];
+  return (await redisGet(key)) || [];
 }
 
 export async function saveData(key, data) {
@@ -120,5 +132,5 @@ export async function saveData(key, data) {
     localSet(key, data);
     return;
   }
-  await kvSet(key, data);
+  await redisSet(key, data);
 }
